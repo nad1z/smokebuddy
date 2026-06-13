@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { EventTimeline, BBQEvent } from '../../domain/types'
 import { MEAT_LABELS } from '../../domain/types'
 import { formatTime } from '../../utils/time'
@@ -6,16 +6,26 @@ import { formatTime } from '../../utils/time'
 interface Props {
   timeline: EventTimeline
   event: BBQEvent
-  now?: Date
 }
 
-export function GanttChart({ timeline, event, now }: Props) {
+export function GanttChart({ timeline, event }: Props) {
   const startMs = timeline.sessionStartAt.getTime()
   const endMs = new Date(event.servingTime).getTime()
   const totalMs = endMs - startMs
 
+  // Live clock — updates every minute
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const pct = (date: Date): number =>
     Math.max(0, Math.min(100, ((date.getTime() - startMs) / totalMs) * 100))
+
+  const nowMs = now.getTime()
+  const nowPct = pct(now)
+  const nowVisible = nowMs >= startMs && nowMs <= endMs
 
   const ticks = useMemo(() => {
     const result: Date[] = []
@@ -39,14 +49,10 @@ export function GanttChart({ timeline, event, now }: Props) {
         smokeStart: get('addToSmoker'),
         wrapAt: get('wrap'),
         offSmokerAt: get('removeFromSmoker'),
-        sliceAt: get('slice'),
+        serveAt: get('serve'),
       }
     }),
   [timeline, event])
-
-  const refuelSteps = timeline.eventSteps.filter(s => s.label === 'refuelSmoker')
-  const nowPct = now ? pct(now) : null
-  const nowInRange = nowPct !== null && nowPct >= 0 && nowPct <= 100
 
   return (
     <div className="overflow-x-auto rounded-2xl bg-zinc-800/60 border border-zinc-700/40 shadow-md">
@@ -55,7 +61,8 @@ export function GanttChart({ timeline, event, now }: Props) {
         {/* ── Time axis ── */}
         <div className="flex mb-1">
           <div className="w-20 shrink-0" />
-          <div className="flex-1 relative h-5">
+          <div className="flex-1 relative h-7">
+            {/* Hourly ticks */}
             {ticks.map(tick => (
               <div
                 key={tick.getTime()}
@@ -65,40 +72,38 @@ export function GanttChart({ timeline, event, now }: Props) {
                 <span className="text-[10px] text-zinc-500 tabular-nums">{formatTime(tick)}</span>
               </div>
             ))}
-            <div className="absolute top-0 right-0">
-              <span className="text-[10px] text-orange-400 font-semibold translate-x-0 inline-block">serve</span>
+            {/* Serve marker */}
+            <div className="absolute top-0 right-0 text-[10px] text-orange-400 font-semibold">
+              serve
             </div>
+            {/* Now pin head */}
+            {nowVisible && (
+              <div
+                className="absolute top-0 flex flex-col items-center -translate-x-1/2 z-20 pointer-events-none"
+                style={{ left: `${nowPct}%`, transition: 'left 1s ease-out' }}
+              >
+                <div className="bg-orange-400 text-zinc-900 text-[9px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight shadow-md">
+                  {formatTime(now)}
+                </div>
+                <div className="w-px h-2 bg-orange-400" />
+              </div>
+            )}
           </div>
         </div>
 
         {/* ── Fire / event row ── */}
         <div className="flex items-center h-9 border-b border-zinc-700/30">
-          <div className="w-20 shrink-0 text-[11px] text-zinc-500 text-right pr-3 leading-tight">
+          <div className="w-20 shrink-0 text-[11px] text-zinc-500 text-right pr-3">
             Fire
           </div>
           <div className="flex-1 relative h-full">
             <GridLines ticks={ticks} pct={pct} />
             <div className="absolute top-0 bottom-0 right-0 w-px bg-orange-500/50" />
-            {nowInRange && <NowLine pct={nowPct!} />}
-
-            <div
-              className="absolute top-1/2 -translate-y-1/2 text-base leading-none"
-              style={{ left: 0, transform: 'translateY(-50%)' }}
-              title={formatTime(timeline.sessionStartAt)}
-            >
+            {nowVisible && <NowLine pct={nowPct} />}
+            {/* Fire start marker */}
+            <div className="absolute top-1/2 -translate-y-1/2 text-base leading-none" style={{ left: 0 }}>
               🔥
             </div>
-
-            {refuelSteps.map((s, i) => (
-              <div
-                key={i}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-sm leading-none"
-                style={{ left: `${pct(s.scheduledAt)}%` }}
-                title={`Refuel at ${formatTime(s.scheduledAt)}`}
-              >
-                🪵
-              </div>
-            ))}
           </div>
         </div>
 
@@ -108,7 +113,7 @@ export function GanttChart({ timeline, event, now }: Props) {
           const smokeStartPct = bar.smokeStart ? pct(bar.smokeStart) : 0
           const wrapPct = bar.wrapAt ? pct(bar.wrapAt) : null
           const offPct = bar.offSmokerAt ? pct(bar.offSmokerAt) : 100
-          const slicePct = bar.sliceAt ? pct(bar.sliceAt) : 100
+          const servePct = bar.serveAt ? pct(bar.serveAt) : 100
           const smokeEndPct = wrapPct ?? offPct
 
           return (
@@ -116,15 +121,15 @@ export function GanttChart({ timeline, event, now }: Props) {
               key={bar.meatId}
               className={`flex items-center h-11 ${idx < bars.length - 1 ? 'border-b border-zinc-700/30' : ''}`}
             >
-              <div className="w-20 shrink-0 text-xs text-zinc-200 font-medium text-right pr-3 truncate leading-tight">
+              <div className="w-20 shrink-0 text-xs text-zinc-200 font-medium text-right pr-3 truncate">
                 {bar.label}
               </div>
               <div className="flex-1 relative h-full">
                 <GridLines ticks={ticks} pct={pct} />
                 <div className="absolute top-0 bottom-0 right-0 w-px bg-orange-500/50" />
-                {nowInRange && <NowLine pct={nowPct!} />}
+                {nowVisible && <NowLine pct={nowPct} />}
 
-                {/* Bar track */}
+                {/* Bars centered vertically */}
                 <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[18px]">
                   {/* Smoke phase */}
                   {smokeStartPct < smokeEndPct && (
@@ -133,7 +138,6 @@ export function GanttChart({ timeline, event, now }: Props) {
                       style={{ left: `${smokeStartPct}%`, right: `${100 - smokeEndPct}%` }}
                     />
                   )}
-
                   {/* Wrap phase */}
                   {hasWrap && wrapPct !== null && wrapPct < offPct && (
                     <div
@@ -141,26 +145,20 @@ export function GanttChart({ timeline, event, now }: Props) {
                       style={{ left: `${wrapPct}%`, right: `${100 - offPct}%` }}
                     />
                   )}
-
                   {/* Rest phase */}
-                  {offPct < slicePct && (
+                  {offPct < servePct && (
                     <div
                       className="absolute inset-y-0 bg-sky-500/35 rounded-r-md"
-                      style={{ left: `${offPct}%`, right: `${100 - slicePct}%` }}
+                      style={{ left: `${offPct}%`, right: `${100 - servePct}%` }}
                     />
                   )}
                 </div>
 
-                {/* Start time label inside bar */}
+                {/* Start time label */}
                 {bar.smokeStart && smokeEndPct - smokeStartPct > 10 && (
                   <span
-                    className="absolute text-[9px] text-white/75 leading-none pointer-events-none z-10"
-                    style={{
-                      left: `${smokeStartPct}%`,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      paddingLeft: '3px',
-                    }}
+                    className="absolute text-[9px] text-white/70 leading-none pointer-events-none z-10"
+                    style={{ left: `${smokeStartPct}%`, top: '50%', transform: 'translateY(-50%)', paddingLeft: 3 }}
                   >
                     {formatTime(bar.smokeStart)}
                   </span>
@@ -175,10 +173,10 @@ export function GanttChart({ timeline, event, now }: Props) {
           <LegendItem color="bg-orange-500/75" label="Smoking" />
           <LegendItem color="bg-amber-400/80" label="Wrapped" />
           <LegendItem color="bg-sky-500/35" label="Resting" />
-          {nowInRange && (
+          {nowVisible && (
             <div className="flex items-center gap-1.5">
-              <div className="w-px h-3.5 bg-white/50" />
-              <span>Now</span>
+              <div className="w-px h-3.5 bg-orange-400" />
+              <span className="text-orange-400">Now</span>
             </div>
           )}
         </div>
@@ -204,8 +202,8 @@ function GridLines({ ticks, pct }: { ticks: Date[]; pct: (d: Date) => number }) 
 function NowLine({ pct }: { pct: number }) {
   return (
     <div
-      className="absolute top-0 bottom-0 w-px bg-white/50 z-10"
-      style={{ left: `${pct}%` }}
+      className="absolute top-0 bottom-0 w-0.5 bg-orange-400/70 z-10 pointer-events-none"
+      style={{ left: `${pct}%`, transition: 'left 1s ease-out' }}
     />
   )
 }

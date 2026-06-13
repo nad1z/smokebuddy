@@ -12,6 +12,8 @@ import { TimelineRow } from '../components/timeline/TimelineRow'
 import { MEAT_LABELS, STEP_LABELS } from '../domain/types'
 import { formatTime } from '../utils/time'
 import type { TimelineStep } from '../domain/types'
+import { groupSteps } from '../utils/groupSteps'
+import { SpritzRow } from '../components/timeline/SpritzRow'
 
 interface Props {
   eventId: string
@@ -381,17 +383,37 @@ export function LiveDashboard({ eventId }: Props) {
         {/* All steps */}
         <div className="mx-4 mt-4 mb-4 space-y-1">
           <p className="text-zinc-400 text-xs font-medium uppercase tracking-widest mb-2">All Steps</p>
-          {timeline.allStepsSorted.map(step => (
-            <TimelineRow
-              key={step.id}
-              step={step}
-              meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
-              isCompleted={completedIds.has(step.id)}
-              isCurrent={step.id === currentStep?.id}
-              onComplete={() => completeStep(step.id)}
-              onUncomplete={() => uncompleteStep(step.id)}
-            />
-          ))}
+          {groupSteps(timeline.allStepsSorted).map(group => {
+            if (group.type === 'single') {
+              const step = group.step
+              return (
+                <TimelineRow
+                  key={step.id}
+                  step={step}
+                  meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
+                  isCompleted={completedIds.has(step.id)}
+                  isCurrent={step.id === currentStep?.id}
+                  onComplete={() => completeStep(step.id)}
+                  onUncomplete={() => uncompleteStep(step.id)}
+                />
+              )
+            }
+            return (
+              <SpritzRow
+                key={`spritz_${group.meatEntryId}_${group.startTime.getTime()}`}
+                group={group}
+                meatLabel={group.meatEntryId ? meatLabels[group.meatEntryId] : undefined}
+                completedIds={completedIds}
+                isCurrent={group.steps.some(s => s.id === currentStep?.id)}
+                onCompleteAll={() =>
+                  group.steps.filter(s => !completedIds.has(s.id)).forEach(s => completeStep(s.id))
+                }
+                onUncompleteAll={() =>
+                  group.steps.filter(s => completedIds.has(s.id)).forEach(s => uncompleteStep(s.id))
+                }
+              />
+            )
+          })}
         </div>
 
         {/* End session */}

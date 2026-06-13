@@ -49,13 +49,13 @@ describe('TimelineEngine', () => {
     expect(serve!.scheduledAt.toISOString()).toBe(new Date(servingTime).toISOString())
   })
 
-  it('rest step ends before slice step', () => {
+  it('rest step ends before serve step', () => {
     const event = makeBrisketEvent('2025-01-01T18:00:00')
     const timeline = generateEventTimeline(event, true)
     const steps = timeline.meatTimelines[0].steps
     const rest = steps.find(s => s.label === 'rest')!
-    const slice = steps.find(s => s.label === 'slice')!
-    expect(rest.scheduledAt.getTime()).toBeLessThan(slice.scheduledAt.getTime())
+    const serve = steps.find(s => s.label === 'serve')!
+    expect(rest.scheduledAt.getTime()).toBeLessThan(serve.scheduledAt.getTime())
   })
 
   it('wrap step comes before removeFromSmoker', () => {
@@ -93,13 +93,6 @@ describe('TimelineEngine', () => {
       if (addAt) expect(s.scheduledAt.getTime()).toBeGreaterThan(addAt.getTime())
       if (wrapAt) expect(s.scheduledAt.getTime()).toBeLessThan(wrapAt.getTime())
     })
-  })
-
-  it('generates refuel steps for a long cook', () => {
-    const event = makeBrisketEvent('2025-01-01T18:00:00')
-    const timeline = generateEventTimeline(event, false)
-    const refuels = timeline.eventSteps.filter(s => s.label === 'refuelSmoker')
-    expect(refuels.length).toBeGreaterThan(0)
   })
 
   it('generates water pan steps for offset smoker', () => {

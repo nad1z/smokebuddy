@@ -153,7 +153,7 @@ export const STEP_LABELS: Record<StepLabel, string> = {
   removeFromSmoker: '🏁 Off Smoker',
   rest: '⏸ Rest',
   slice: '🔪 Slice',
-  serve: '🍽 Serve',
+  serve: '🎉 Cook Done — Time to Eat!',
 }
 
 export const SMOKERS_WITH_WATER_PAN: SmokerType[] = ['cabinet', 'offsetStickBurner', 'uds']

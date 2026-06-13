@@ -5,9 +5,11 @@ import { useTimeline } from '../hooks/useTimeline'
 import { PageHeader } from '../components/ui/PageHeader'
 import { TimelineRow } from '../components/timeline/TimelineRow'
 import { GanttChart } from '../components/timeline/GanttChart'
+import { SpritzRow } from '../components/timeline/SpritzRow'
 import { Badge } from '../components/ui/Badge'
 import { MEAT_LABELS } from '../domain/types'
 import { formatDateTime } from '../utils/time'
+import { groupSteps } from '../utils/groupSteps'
 
 interface Props {
   eventId: string
@@ -105,7 +107,7 @@ export function Timeline({ eventId }: Props) {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe-bottom">
         {view === 'gantt' ? (
-          <GanttChart timeline={timeline} event={event} now={now} />
+          <GanttChart timeline={timeline} event={event} />
         ) : (
           <>
             {/* Meat legend */}
@@ -121,14 +123,25 @@ export function Timeline({ eventId }: Props) {
             <div className="relative">
               <div className="absolute left-[27px] top-4 bottom-4 w-px bg-zinc-700/60" aria-hidden="true" />
               <div className="space-y-0">
-                {timeline.allStepsSorted.map(step => {
-                  const isCompleted = step.scheduledAt < now
+                {groupSteps(timeline.allStepsSorted).map(group => {
+                  if (group.type === 'single') {
+                    const step = group.step
+                    return (
+                      <TimelineRow
+                        key={step.id}
+                        step={step}
+                        meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
+                        isCompleted={step.scheduledAt < now}
+                        isCurrent={false}
+                      />
+                    )
+                  }
                   return (
-                    <TimelineRow
-                      key={step.id}
-                      step={step}
-                      meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
-                      isCompleted={isCompleted}
+                    <SpritzRow
+                      key={`spritz_${group.meatEntryId}_${group.startTime.getTime()}`}
+                      group={group}
+                      meatLabel={group.meatEntryId ? meatLabels[group.meatEntryId] : undefined}
+                      completedIds={new Set(group.steps.filter(s => s.scheduledAt < now).map(s => s.id))}
                       isCurrent={false}
                     />
                   )
