@@ -14,6 +14,7 @@ import { formatTime } from '../utils/time'
 import type { TimelineStep } from '../domain/types'
 import { groupSteps } from '../utils/groupSteps'
 import { SpritzRow } from '../components/timeline/SpritzRow'
+import { GanttChart } from '../components/timeline/GanttChart'
 
 interface Props {
   eventId: string
@@ -378,6 +379,11 @@ export function LiveDashboard({ eventId }: Props) {
               style={{ width: `${progress}%` }}
             />
           </div>
+        </div>
+
+        {/* Gantt overview */}
+        <div className="mx-4 mt-3">
+          <GanttChart timeline={timeline} event={event} />
         </div>
 
         {/* All steps */}
