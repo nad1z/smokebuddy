@@ -38,8 +38,8 @@ function playAlertChime() {
 }
 
 export function LiveDashboard({ eventId }: Props) {
-  const { state, startSession, endSession, completeStep, updatePreferences } = useApp()
-  const { navigate, back } = useRouter()
+  const { state, startSession, endSession, completeStep, uncompleteStep, setCompletedSteps, resetSessionSteps, updatePreferences } = useApp()
+  const { route, navigate, back } = useRouter()
   const { isGranted, request } = useNotifications()
   const event = state.events.find(e => e.id === eventId)
   const timeline = useTimeline(event ?? null, state.preferences.spritzeEnabled)
@@ -77,6 +77,23 @@ export function LiveDashboard({ eventId }: Props) {
     void startSession(eventId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
+
+  // On mount: if URL carries completed step IDs, seed the session from them
+  useEffect(() => {
+    if (route.page === 'dashboard' && route.completedSteps && route.completedSteps.length > 0) {
+      setCompletedSteps(route.completedSteps)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep URL in sync with current completed-step state (silent replace, no nav loop)
+  useEffect(() => {
+    if (!session || !eventId) return
+    const steps = session.completedStepIds
+    const base = `#dashboard?id=${eventId}`
+    const hash = steps.length > 0 ? `${base}&steps=${steps.join(',')}` : base
+    window.history.replaceState(null, '', hash)
+  }, [session?.completedStepIds, eventId])
 
   // Request notification permission and schedule steps
   useEffect(() => {
@@ -267,6 +284,15 @@ export function LiveDashboard({ eventId }: Props) {
             <p className="text-5xl mb-3">🎉</p>
             <p className="text-white font-black text-2xl">Cook Complete!</p>
             <p className="text-green-300/70 text-sm mt-2">All steps done. Time to eat!</p>
+            <button
+              onClick={() => {
+                resetSessionSteps()
+                navigate({ page: 'dashboard', eventId })
+              }}
+              className="mt-4 text-zinc-400 hover:text-white text-sm underline underline-offset-2 transition-colors"
+            >
+              Start Fresh Session
+            </button>
           </div>
         ) : (
           <>
@@ -363,6 +389,7 @@ export function LiveDashboard({ eventId }: Props) {
               isCompleted={completedIds.has(step.id)}
               isCurrent={step.id === currentStep?.id}
               onComplete={() => completeStep(step.id)}
+              onUncomplete={() => uncompleteStep(step.id)}
             />
           ))}
         </div>

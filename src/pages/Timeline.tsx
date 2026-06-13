@@ -69,36 +69,40 @@ export function Timeline({ eventId }: Props) {
       />
 
       {/* Fire start callout */}
-      <div className="mx-4 mt-4 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3">
-        <p className="text-xs text-orange-400 font-medium">Fire Start</p>
-        <p className="text-white font-bold text-lg">{formatDateTime(timeline.sessionStartAt)}</p>
+      <div className="mx-4 mt-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl px-4 py-4 shadow-md">
+        <p className="text-xs text-orange-400/80 font-semibold uppercase tracking-wide mb-0.5">Fire Start</p>
+        <p className="text-white font-bold text-xl">{formatDateTime(timeline.sessionStartAt)}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe-bottom">
         {/* Meat legend */}
         {event.meats.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-5">
             {event.meats.map(m => (
               <Badge key={m.id} color="orange">{meatLabels[m.id]}</Badge>
             ))}
           </div>
         )}
 
-        {/* Steps */}
-        <div className="space-y-1">
-          {timeline.allStepsSorted.map(step => {
-            const isCompleted = step.scheduledAt < now
-            const isCurrent = false
-            return (
-              <TimelineRow
-                key={step.id}
-                step={step}
-                meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
-                isCompleted={isCompleted}
-                isCurrent={isCurrent}
-              />
-            )
-          })}
+        {/* Steps — wrapped in a relative container for the connecting line */}
+        <div className="relative">
+          {/* Vertical connecting line behind dots */}
+          <div className="absolute left-[27px] top-4 bottom-4 w-px bg-zinc-700/60" aria-hidden="true" />
+          <div className="space-y-0">
+            {timeline.allStepsSorted.map(step => {
+              const isCompleted = step.scheduledAt < now
+              const isCurrent = false
+              return (
+                <TimelineRow
+                  key={step.id}
+                  step={step}
+                  meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
+                  isCompleted={isCompleted}
+                  isCurrent={isCurrent}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

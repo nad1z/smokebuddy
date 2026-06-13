@@ -2,7 +2,6 @@ import type { BBQEvent, MeatEntry, TimelineStep, MeatTimeline, EventTimeline } f
 import { SMOKERS_WITH_WATER_PAN } from '../domain/types'
 import { getCookProfile } from '../domain/cookProfiles'
 import { subtractMinutes, addMinutes } from '../utils/time'
-import { generateId } from '../utils/uuid'
 
 const REFUEL_EVERY_MINUTES = 240   // 4 hours
 const SLICE_DURATION_MINUTES = 15
@@ -12,9 +11,10 @@ function makeStep(
   label: TimelineStep['label'],
   scheduledAt: Date,
   durationMinutes = 0,
+  stepKey: string,
 ): TimelineStep {
   return {
-    id: generateId(),
+    id: stepKey,
     meatEntryId,
     label,
     scheduledAt,
@@ -31,14 +31,15 @@ function generateMeatTimeline(
   servingTime: Date,
   spritzeEnabled: boolean,
 ): MeatTimeline {
-  const profile = getCookProfile(meat.meatType, meat.cookMethod)
+  const profile = getCookProfile(meat.meatType)
   const steps: TimelineStep[] = []
 
   // ── Work backwards from serving time ──────────────────────────────────────
 
   const serveAt = servingTime
   const sliceAt = subtractMinutes(serveAt, SLICE_DURATION_MINUTES)
-  const restStart = subtractMinutes(sliceAt, meat.restMinutes)
+  const restMinutes = profile.restMinutes
+  const restStart = subtractMinutes(sliceAt, restMinutes)
   const offSmokerAt = restStart
 
   // Total cook minutes (weight-based, with floor)
@@ -61,20 +62,20 @@ function generateMeatTimeline(
   // ── Build steps ───────────────────────────────────────────────────────────
 
   // serve / slice / rest / off smoker
-  steps.push(makeStep(meat.id, 'serve', serveAt, 0))
-  steps.push(makeStep(meat.id, 'slice', sliceAt, SLICE_DURATION_MINUTES))
-  steps.push(makeStep(meat.id, 'rest', restStart, meat.restMinutes))
-  steps.push(makeStep(meat.id, 'removeFromSmoker', offSmokerAt, 0))
+  steps.push(makeStep(meat.id, 'serve', serveAt, 0, `${meat.id}_serve`))
+  steps.push(makeStep(meat.id, 'slice', sliceAt, SLICE_DURATION_MINUTES, `${meat.id}_slice`))
+  steps.push(makeStep(meat.id, 'rest', restStart, restMinutes, `${meat.id}_rest`))
+  steps.push(makeStep(meat.id, 'removeFromSmoker', offSmokerAt, 0, `${meat.id}_removeFromSmoker`))
 
   // wrap
   if (hasWrap && wrapAt) {
-    steps.push(makeStep(meat.id, 'wrap', wrapAt, 5))
+    steps.push(makeStep(meat.id, 'wrap', wrapAt, 5, `${meat.id}_wrap`))
     // check bark ~15 min before wrap
-    steps.push(makeStep(meat.id, 'checkBark', subtractMinutes(wrapAt, 15), 2))
+    steps.push(makeStep(meat.id, 'checkBark', subtractMinutes(wrapAt, 15), 2, `${meat.id}_checkBark`))
   }
 
   // add to smoker
-  steps.push(makeStep(meat.id, 'addToSmoker', addToSmokerAt, 5))
+  steps.push(makeStep(meat.id, 'addToSmoker', addToSmokerAt, 5, `${meat.id}_addToSmoker`))
 
   // spritze during unwrapped phase
   if (spritzeEnabled && profile.spritzeEveryMinutes > 0) {
@@ -83,12 +84,14 @@ function generateMeatTimeline(
     const wrapOrOffSmoker = wrapAt ?? offSmokerAt
 
     if (firstSpritzAt < wrapOrOffSmoker) {
-      steps.push(makeStep(meat.id, 'firstSpritz', firstSpritzAt, 2))
+      steps.push(makeStep(meat.id, 'firstSpritz', firstSpritzAt, 2, `${meat.id}_firstSpritz`))
     }
 
     let nextSpritz = addMinutes(firstSpritzAt, profile.spritzeEveryMinutes)
+    let spritzCounter = 0
     while (nextSpritz < subtractMinutes(wrapOrOffSmoker, 30)) {
-      steps.push(makeStep(meat.id, 'spritz', nextSpritz, 2))
+      steps.push(makeStep(meat.id, 'spritz', nextSpritz, 2, `${meat.id}_spritz_${spritzCounter}`))
+      spritzCounter++
       nextSpritz = addMinutes(nextSpritz, profile.spritzeEveryMinutes)
     }
   }
@@ -115,34 +118,35 @@ function generateEventSteps(
 
   // Pick preheat duration from the largest/longest profile
   const meatWithLongestPreheat = event.meats.reduce((best, m) => {
-    const profile = getCookProfile(m.meatType, m.cookMethod)
-    const bestProfile = getCookProfile(best.meatType, best.cookMethod)
+    const profile = getCookProfile(m.meatType)
+    const bestProfile = getCookProfile(best.meatType)
     return profile.preheatMinutes > bestProfile.preheatMinutes ? m : best
   }, event.meats[0])
 
-  const preheatMinutes = getCookProfile(
-    meatWithLongestPreheat.meatType,
-    meatWithLongestPreheat.cookMethod,
-  ).preheatMinutes
+  const preheatMinutes = getCookProfile(meatWithLongestPreheat.meatType).preheatMinutes
 
   const startFireAt = subtractMinutes(earliestAddToSmoker.scheduledAt, preheatMinutes)
-  steps.push(makeStep(null, 'startFire', startFireAt, preheatMinutes))
+  steps.push(makeStep(null, 'startFire', startFireAt, preheatMinutes, 'event_startFire'))
 
   // Refuel every 4 hours from fire start until last meat is done
   const lastStep = allSteps.reduce((last, s) =>
     s.scheduledAt > last.scheduledAt ? s : last,
   )
   let refuelAt = addMinutes(startFireAt, REFUEL_EVERY_MINUTES)
+  let refuelCounter = 0
   while (refuelAt < lastStep.scheduledAt) {
-    steps.push(makeStep(null, 'refuelSmoker', refuelAt, 5))
+    steps.push(makeStep(null, 'refuelSmoker', refuelAt, 5, `event_refuelSmoker_${refuelCounter}`))
+    refuelCounter++
     refuelAt = addMinutes(refuelAt, REFUEL_EVERY_MINUTES)
   }
 
   // Water pan refill for smokers that use one
   if (SMOKERS_WITH_WATER_PAN.includes(event.smokerType)) {
     let waterAt = addMinutes(startFireAt, REFUEL_EVERY_MINUTES + 30)
+    let waterCounter = 0
     while (waterAt < subtractMinutes(servingTime, 60)) {
-      steps.push(makeStep(null, 'refillWaterPan', waterAt, 3))
+      steps.push(makeStep(null, 'refillWaterPan', waterAt, 3, `event_refillWaterPan_${waterCounter}`))
+      waterCounter++
       waterAt = addMinutes(waterAt, REFUEL_EVERY_MINUTES)
     }
   }

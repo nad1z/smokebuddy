@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card'
 import { MeatCard } from '../components/meat/MeatCard'
 import { SMOKER_LABELS, FUEL_LABELS } from '../domain/types'
 import { formatDateTime, formatDuration } from '../utils/time'
+import { displayTemp } from '../utils/units'
 import { ExportService } from '../services/ExportService'
 
 interface Props {
@@ -100,66 +101,73 @@ export function EventDetail({ eventId }: Props) {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-safe-bottom">
         {isPastEvent && !hasActiveSession && (
-          <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm">
+          <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
+            <span className="text-zinc-500">⏱</span>
             <p className="text-zinc-400">This event's serving time has passed.</p>
           </div>
         )}
         {/* Summary */}
         <Card>
-          <div className="grid grid-cols-2 gap-y-2 text-sm">
+          <div className="grid grid-cols-2 gap-y-4 text-sm">
             <div>
-              <p className="text-zinc-500 text-xs">Smoker</p>
-              <p className="text-white font-medium">{SMOKER_LABELS[event.smokerType]}</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Smoker</p>
+              <p className="text-white font-semibold">{SMOKER_LABELS[event.smokerType]}</p>
             </div>
             <div>
-              <p className="text-zinc-500 text-xs">Fuel</p>
-              <p className="text-white font-medium">{FUEL_LABELS[event.fuelType]}</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Fuel</p>
+              <p className="text-white font-semibold">{FUEL_LABELS[event.fuelType]}</p>
             </div>
             <div>
-              <p className="text-zinc-500 text-xs">Pit Temp</p>
-              <p className="text-white font-medium">{event.targetPitTempF}°F</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Pit Temp</p>
+              <p className="text-orange-400 font-bold text-base">{displayTemp(event.targetPitTempF, state.preferences.measurementSystem)}</p>
             </div>
             <div>
-              <p className="text-zinc-500 text-xs">Guests</p>
-              <p className="text-white font-medium">{event.guestCount}</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Guests</p>
+              <p className="text-white font-semibold">{event.guestCount}</p>
             </div>
             {timeline && (
               <>
                 <div>
-                  <p className="text-zinc-500 text-xs">Fire start</p>
-                  <p className="text-orange-300 font-medium">
+                  <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Fire start</p>
+                  <p className="text-orange-300 font-semibold">
                     {formatDateTime(timeline.sessionStartAt)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-zinc-500 text-xs">Total duration</p>
-                  <p className="text-white font-medium">{formatDuration(sessionDuration * 60)}</p>
+                  <p className="text-zinc-500 text-xs uppercase tracking-wide mb-0.5">Total duration</p>
+                  <p className="text-white font-semibold">{formatDuration(sessionDuration * 60)}</p>
                 </div>
               </>
             )}
           </div>
           {event.notes && (
-            <p className="text-zinc-400 text-sm mt-3 pt-3 border-t border-zinc-700">{event.notes}</p>
+            <p className="text-zinc-400 text-sm mt-4 pt-4 border-t border-zinc-700/60">{event.notes}</p>
           )}
         </Card>
 
         {/* Meats */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-white font-bold text-base">Meats ({event.meats.length})</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-white font-bold text-base">
+              Meats
+              {event.meats.length > 0 && (
+                <span className="ml-2 text-zinc-500 text-sm font-normal">({event.meats.length})</span>
+              )}
+            </h2>
             <button
               onClick={() => navigate({ page: 'addMeat', eventId })}
-              className="text-orange-400 hover:text-orange-300 text-sm font-medium py-2 px-2 min-h-[44px] flex items-center"
+              className="text-orange-400 hover:text-orange-300 text-sm font-semibold py-2 px-2 min-h-[44px] flex items-center transition-colors"
             >
               + Add Meat
             </button>
           </div>
           {event.meats.length === 0 ? (
-            <Card className="text-center py-6">
-              <p className="text-zinc-500 text-sm">No meats yet.</p>
+            <Card className="text-center py-8">
+              <p className="text-4xl mb-3">🥩</p>
+              <p className="text-zinc-400 text-sm font-medium">No meats added yet</p>
               <button
                 onClick={() => navigate({ page: 'addMeat', eventId })}
-                className="text-orange-400 text-sm mt-2 underline"
+                className="text-orange-400 text-sm mt-3 font-semibold underline underline-offset-2"
               >
                 Add your first meat
               </button>
@@ -170,7 +178,7 @@ export function EventDetail({ eventId }: Props) {
                 <MeatCard
                   key={meat.id}
                   meat={meat}
-                  tempUnit={state.preferences.temperatureUnit}
+                  measurementSystem={state.preferences.measurementSystem}
                   onEdit={() => navigate({ page: 'addMeat', eventId, meatId: meat.id })}
                   onDelete={() => handleDeleteMeat(meat.id)}
                 />
@@ -180,7 +188,7 @@ export function EventDetail({ eventId }: Props) {
         </div>
 
         {/* Actions */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-3 pt-1 pb-2">
           {event.meats.length > 0 && (
             <>
               <Button
@@ -204,10 +212,10 @@ export function EventDetail({ eventId }: Props) {
           <button
             onClick={handleDelete}
             className={[
-              'w-full py-3 text-sm rounded-xl transition-colors min-h-[44px]',
+              'w-full py-3 text-sm rounded-xl transition-all min-h-[44px]',
               confirmDelete
-                ? 'bg-red-600 text-white font-semibold'
-                : 'text-red-500 hover:bg-red-500/10',
+                ? 'bg-red-600 text-white font-semibold shadow-md'
+                : 'text-red-500/70 hover:text-red-400 hover:bg-red-500/10',
             ].join(' ')}
           >
             {confirmDelete ? 'Tap again to confirm delete' : 'Delete Event'}

@@ -1,5 +1,6 @@
-import type { MeatEntry } from '../../domain/types'
+import type { MeatEntry, MeasurementSystem } from '../../domain/types'
 import { MEAT_LABELS } from '../../domain/types'
+import { displayTemp, displayWeight } from '../../utils/units'
 import { Card } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 
@@ -7,17 +8,12 @@ interface Props {
   meat: MeatEntry
   onEdit: () => void
   onDelete: () => void
-  tempUnit: 'F' | 'C'
+  measurementSystem: MeasurementSystem
 }
 
-export function MeatCard({ meat, onEdit, onDelete, tempUnit }: Props) {
-  const targetDisplay =
-    tempUnit === 'C'
-      ? `${Math.round(((meat.targetTempF - 32) * 5) / 9)}°C`
-      : `${meat.targetTempF}°F`
-
+export function MeatCard({ meat, onEdit, onDelete, measurementSystem }: Props) {
   return (
-    <Card className="space-y-2">
+    <Card className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-white font-semibold truncate">{meat.label}</span>
@@ -41,14 +37,13 @@ export function MeatCard({ meat, onEdit, onDelete, tempUnit }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-sm text-zinc-400">
-        <span>{meat.weightLbs} lbs</span>
-        <span>·</span>
-        <span>Target: {targetDisplay}</span>
-        <span>·</span>
-        <span>Rest: {meat.restMinutes}m</span>
-        <span>·</span>
-        <span className="capitalize">{meat.cookMethod === 'lowAndSlow' ? 'Low & Slow' : 'Hot & Fast'}</span>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <span className="text-zinc-400">{displayWeight(meat.weightLbs, measurementSystem)}</span>
+        <span className="text-zinc-400">
+          Target: <span className="text-orange-400 font-medium">{displayTemp(meat.targetTempF, measurementSystem)}</span>
+        </span>
+        <span className="text-zinc-400">Rest: {meat.restMinutes}m</span>
+        <span className="text-zinc-500 capitalize">{meat.cookMethod === 'lowAndSlow' ? 'Low & Slow' : 'Hot & Fast'}</span>
       </div>
     </Card>
   )

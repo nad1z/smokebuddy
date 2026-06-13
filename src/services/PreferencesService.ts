@@ -3,12 +3,13 @@ import type { UserPreferences } from '../domain/types'
 const KEY = 'smokebuddy_prefs'
 
 const defaults: UserPreferences = {
-  temperatureUnit: 'F',
+  measurementSystem: 'metric',
   theme: 'dark',
   notificationsEnabled: true,
   defaultNotifyBeforeMinutes: 5,
   spritzeEnabled: true,
   wakeLockEnabled: false,
+  overnightModeEnabled: false,
 }
 
 export const PreferencesService = {

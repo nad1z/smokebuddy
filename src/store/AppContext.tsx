@@ -33,6 +33,8 @@ type Action =
   | { type: 'SET_ACTIVE_SESSION'; session: Session | null }
   | { type: 'UPDATE_PREFERENCES'; preferences: UserPreferences }
   | { type: 'COMPLETE_STEP'; stepId: string }
+  | { type: 'UNCOMPLETE_STEP'; stepId: string }
+  | { type: 'SET_COMPLETED_STEPS'; stepIds: string[] }
   | { type: 'RESET_SESSION_STEPS' }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -77,6 +79,21 @@ function reducer(state: AppState, action: Action): AppState {
       }
     }
 
+    case 'UNCOMPLETE_STEP': {
+      if (!state.activeSession) return state
+      return {
+        ...state,
+        activeSession: {
+          ...state.activeSession,
+          completedStepIds: state.activeSession.completedStepIds.filter(id => id !== action.stepId),
+        },
+      }
+    }
+
+    case 'SET_COMPLETED_STEPS':
+      if (!state.activeSession) return state
+      return { ...state, activeSession: { ...state.activeSession, completedStepIds: action.stepIds } }
+
     case 'RESET_SESSION_STEPS':
       if (!state.activeSession) return state
       return { ...state, activeSession: { ...state.activeSession, completedStepIds: [] } }
@@ -105,6 +122,8 @@ interface AppContextValue {
   startSession: (eventId: string) => Promise<Session>
   endSession: () => Promise<void>
   completeStep: (stepId: string) => void
+  uncompleteStep: (stepId: string) => void
+  setCompletedSteps: (stepIds: string[]) => void
   resetSessionSteps: () => void
   updatePreferences: (partial: Partial<UserPreferences>) => void
 }
@@ -207,6 +226,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'COMPLETE_STEP', stepId })
   }, [])
 
+  const uncompleteStep = useCallback((stepId: string): void => {
+    dispatch({ type: 'UNCOMPLETE_STEP', stepId })
+  }, [])
+
+  const setCompletedSteps = useCallback((stepIds: string[]): void => {
+    dispatch({ type: 'SET_COMPLETED_STEPS', stepIds })
+  }, [])
+
   const resetSessionSteps = useCallback((): void => {
     dispatch({ type: 'RESET_SESSION_STEPS' })
   }, [])
@@ -227,6 +254,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startSession,
         endSession,
         completeStep,
+        uncompleteStep,
+        setCompletedSteps,
         resetSessionSteps,
         updatePreferences,
       }}

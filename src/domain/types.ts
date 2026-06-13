@@ -20,8 +20,6 @@ export type SmokerType =
 
 export type FuelType = 'wood' | 'charcoal' | 'pellets' | 'gas' | 'electric'
 
-export type CookMethod = 'lowAndSlow' | 'hotAndFast'
-
 export type EventStatus = 'planned' | 'active' | 'completed'
 
 export type SessionStatus = 'active' | 'paused' | 'completed'
@@ -40,7 +38,7 @@ export type StepLabel =
   | 'slice'
   | 'serve'
 
-export type TemperatureUnit = 'F' | 'C'
+export type MeasurementSystem = 'metric' | 'imperial'
 export type Theme = 'dark' | 'light' | 'auto'
 
 // ─── Domain Models ────────────────────────────────────────────────────────────
@@ -62,8 +60,6 @@ export interface MeatEntry {
   meatType: MeatType
   weightLbs: number
   targetTempF: number
-  restMinutes: number
-  cookMethod: CookMethod
   label: string               // user-editable display name, defaults to meat type
 }
 
@@ -92,12 +88,13 @@ export interface Session {
 }
 
 export interface UserPreferences {
-  temperatureUnit: TemperatureUnit
+  measurementSystem: MeasurementSystem
   theme: Theme
   notificationsEnabled: boolean
   defaultNotifyBeforeMinutes: number
   spritzeEnabled: boolean
   wakeLockEnabled: boolean
+  overnightModeEnabled: boolean
 }
 
 // ─── Computed (not persisted raw) ─────────────────────────────────────────────
@@ -117,18 +114,18 @@ export interface EventTimeline {
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
 export const MEAT_LABELS: Record<MeatType, string> = {
+  beefRibs: 'Beef Ribs',
   brisket: 'Brisket',
-  porkButt: 'Pork Butt',
-  ribs: 'Ribs',
+  lamb: 'Lamb',
   chicken: 'Chicken',
   turkey: 'Turkey',
+  ribs: 'Pork Ribs',
+  porkButt: 'Pork Butt',
   sausage: 'Sausage',
-  beefRibs: 'Beef Ribs',
-  lamb: 'Lamb',
 }
 
 export const SMOKER_LABELS: Record<SmokerType, string> = {
-  offsetStickBurner: 'Offset Stick Burner',
+  offsetStickBurner: 'Offset Smoker',
   kamado: 'Kamado',
   pelletGrill: 'Pellet Grill',
   kettleGrill: 'Kettle Grill',

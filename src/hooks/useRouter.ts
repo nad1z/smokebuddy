@@ -7,7 +7,7 @@ export type Route =
   | { page: 'eventDetail'; eventId: string }
   | { page: 'addMeat'; eventId: string; meatId?: string }
   | { page: 'timeline'; eventId: string }
-  | { page: 'dashboard'; eventId: string }
+  | { page: 'dashboard'; eventId: string; completedSteps?: string[] }
   | { page: 'settings' }
 
 function parseHash(hash: string): Route {
@@ -36,7 +36,9 @@ function parseHash(hash: string): Route {
     }
     case 'dashboard': {
       const eventId = params.get('id') ?? ''
-      return { page: 'dashboard', eventId }
+      const stepsParam = params.get('steps')
+      const completedSteps = stepsParam ? stepsParam.split(',').filter(Boolean) : undefined
+      return { page: 'dashboard', eventId, ...(completedSteps ? { completedSteps } : {}) }
     }
     case 'settings':
       return { page: 'settings' }
@@ -61,8 +63,12 @@ function routeToHash(route: Route): string {
     }
     case 'timeline':
       return `#timeline?id=${route.eventId}`
-    case 'dashboard':
-      return `#dashboard?id=${route.eventId}`
+    case 'dashboard': {
+      const base = `#dashboard?id=${route.eventId}`
+      return route.completedSteps && route.completedSteps.length > 0
+        ? `${base}&steps=${route.completedSteps.join(',')}`
+        : base
+    }
     case 'settings':
       return '#settings'
   }

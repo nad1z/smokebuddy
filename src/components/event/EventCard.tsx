@@ -23,6 +23,7 @@ const statusLabel: Record<BBQEvent['status'], string> = {
 
 export function EventCard({ event, onClick }: Props) {
   const serving = new Date(event.servingTime)
+  const isUpcoming = event.status === 'planned' || event.status === 'active'
   const meatSummary = event.meats
     .slice(0, 3)
     .map(m => MEAT_LABELS[m.meatType])
@@ -32,9 +33,14 @@ export function EventCard({ event, onClick }: Props) {
   return (
     <Card onClick={onClick} className="space-y-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="text-white font-bold text-lg leading-tight truncate">{event.name}</h2>
-          <p className="text-zinc-400 text-sm mt-0.5">Serve {formatDateTime(serving)}</p>
+          <p className={[
+            'text-sm mt-0.5 font-medium',
+            isUpcoming ? 'text-orange-400/80' : 'text-zinc-500',
+          ].join(' ')}>
+            Serve {formatDateTime(serving)}
+          </p>
         </div>
         <Badge color={statusColor[event.status]}>{statusLabel[event.status]}</Badge>
       </div>
@@ -46,7 +52,7 @@ export function EventCard({ event, onClick }: Props) {
         </p>
       )}
 
-      <div className="flex items-center gap-2 text-zinc-500 text-xs">
+      <div className="flex items-center gap-2 text-zinc-500 text-xs border-t border-zinc-700/50 pt-2.5">
         <span>{SMOKER_LABELS[event.smokerType]}</span>
         <span>·</span>
         <span>{event.targetPitTempF}°F pit</span>

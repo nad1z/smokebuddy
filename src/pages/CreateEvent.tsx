@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
 import { toDateString, toTimeString } from '../utils/time'
+import { tempUnitLabel, fromStoredTempF, toStoredTempF } from '../utils/units'
 
 interface Props {
   event?: BBQEvent  // if set, edit mode
@@ -18,6 +19,7 @@ export function CreateEvent({ event }: Props = {}) {
   const isEditing = Boolean(event)
   const { state, addEvent, updateEvent } = useApp()
   const { navigate, back } = useRouter()
+  const prefs = state.preferences
 
   const hasActiveSession = isEditing && state.activeSession?.eventId === event?.id
 
@@ -28,8 +30,10 @@ export function CreateEvent({ event }: Props = {}) {
   const [date, setDate] = useState(event ? toDateString(new Date(event.servingTime)) : today)
   const [serveTime, setServeTime] = useState(event ? toTimeString(new Date(event.servingTime)) : defaultServeTime)
   const [guestCount, setGuestCount] = useState(String(event?.guestCount ?? '4'))
-  const [smokerType, setSmokerType] = useState<SmokerType>(event?.smokerType ?? 'offsetStickBurner')
-  const [targetPitTemp, setTargetPitTemp] = useState(String(event?.targetPitTempF ?? '250'))
+  const [smokerType, setSmokerType] = useState<SmokerType>(event?.smokerType ?? 'kamado')
+  const [targetPitTemp, setTargetPitTemp] = useState(
+    String(event ? fromStoredTempF(event.targetPitTempF, prefs.measurementSystem) : fromStoredTempF(250, prefs.measurementSystem))
+  )
   const [fuelType, setFuelType] = useState<FuelType>(event?.fuelType ?? 'wood')
   const [notes, setNotes] = useState(event?.notes ?? '')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -41,7 +45,12 @@ export function CreateEvent({ event }: Props = {}) {
     if (!date) e.date = 'Date is required'
     if (!serveTime) e.serveTime = 'Serve time is required'
     const pit = Number(targetPitTemp)
-    if (isNaN(pit) || pit < 180 || pit > 500) e.targetPitTemp = '180–500°F'
+    const unit = tempUnitLabel(prefs.measurementSystem)
+    if (prefs.measurementSystem === 'metric') {
+      if (isNaN(pit) || pit < 82 || pit > 260) e.targetPitTemp = `82–260${unit}`
+    } else {
+      if (isNaN(pit) || pit < 180 || pit > 500) e.targetPitTemp = `180–500${unit}`
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -52,6 +61,7 @@ export function CreateEvent({ event }: Props = {}) {
     setSaving(true)
     try {
       const servingTime = new Date(`${date}T${serveTime}`).toISOString()
+      const storedPitTempF = toStoredTempF(Number(targetPitTemp), prefs.measurementSystem)
       if (event) {
         await updateEvent({
           ...event,
@@ -60,7 +70,7 @@ export function CreateEvent({ event }: Props = {}) {
           servingTime,
           guestCount: Number(guestCount) || 0,
           smokerType,
-          targetPitTempF: Number(targetPitTemp),
+          targetPitTempF: storedPitTempF,
           fuelType,
           notes: notes.trim(),
         })
@@ -72,7 +82,7 @@ export function CreateEvent({ event }: Props = {}) {
           servingTime,
           guestCount: Number(guestCount) || 0,
           smokerType,
-          targetPitTempF: Number(targetPitTemp),
+          targetPitTempF: storedPitTempF,
           fuelType,
           notes: notes.trim(),
           meats: [],
@@ -164,11 +174,11 @@ export function CreateEvent({ event }: Props = {}) {
 
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="Pit Temp (°F)"
+            label={`Pit Temp (${tempUnitLabel(prefs.measurementSystem)})`}
             type="number"
             inputMode="numeric"
-            min="180"
-            max="500"
+            min={prefs.measurementSystem === 'metric' ? '82' : '180'}
+            max={prefs.measurementSystem === 'metric' ? '260' : '500'}
             value={targetPitTemp}
             onChange={e => setTargetPitTemp(e.target.value)}
             error={errors.targetPitTemp}
