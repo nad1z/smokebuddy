@@ -42,8 +42,6 @@ export function MeatCard({ meat, onEdit, onDelete, measurementSystem }: Props) {
         <span className="text-zinc-400">
           Target: <span className="text-orange-400 font-medium">{displayTemp(meat.targetTempF, measurementSystem)}</span>
         </span>
-        <span className="text-zinc-400">Rest: {meat.restMinutes}m</span>
-        <span className="text-zinc-500 capitalize">{meat.cookMethod === 'lowAndSlow' ? 'Low & Slow' : 'Hot & Fast'}</span>
       </div>
     </Card>
   )

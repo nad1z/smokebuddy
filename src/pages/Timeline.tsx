@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useApp } from '../store/AppContext'
 import { useRouter } from '../hooks/useRouter'
 import { useTimeline } from '../hooks/useTimeline'
 import { PageHeader } from '../components/ui/PageHeader'
 import { TimelineRow } from '../components/timeline/TimelineRow'
+import { GanttChart } from '../components/timeline/GanttChart'
 import { Badge } from '../components/ui/Badge'
 import { MEAT_LABELS } from '../domain/types'
 import { formatDateTime } from '../utils/time'
@@ -16,6 +18,7 @@ export function Timeline({ eventId }: Props) {
   const { navigate, back } = useRouter()
   const event = state.events.find(e => e.id === eventId)
   const timeline = useTimeline(event ?? null, state.preferences.spritzeEnabled)
+  const [view, setView] = useState<'gantt' | 'steps'>('gantt')
 
   if (!event) {
     return (
@@ -74,36 +77,66 @@ export function Timeline({ eventId }: Props) {
         <p className="text-white font-bold text-xl">{formatDateTime(timeline.sessionStartAt)}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe-bottom">
-        {/* Meat legend */}
-        {event.meats.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-5">
-            {event.meats.map(m => (
-              <Badge key={m.id} color="orange">{meatLabels[m.id]}</Badge>
-            ))}
-          </div>
-        )}
+      {/* View toggle */}
+      <div className="flex mx-4 mt-3 bg-zinc-800/60 rounded-xl p-1 gap-1">
+        <button
+          onClick={() => setView('gantt')}
+          className={[
+            'flex-1 py-1.5 text-sm font-medium rounded-lg transition-all',
+            view === 'gantt'
+              ? 'bg-zinc-700 text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-300',
+          ].join(' ')}
+        >
+          Gantt
+        </button>
+        <button
+          onClick={() => setView('steps')}
+          className={[
+            'flex-1 py-1.5 text-sm font-medium rounded-lg transition-all',
+            view === 'steps'
+              ? 'bg-zinc-700 text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-300',
+          ].join(' ')}
+        >
+          Steps
+        </button>
+      </div>
 
-        {/* Steps — wrapped in a relative container for the connecting line */}
-        <div className="relative">
-          {/* Vertical connecting line behind dots */}
-          <div className="absolute left-[27px] top-4 bottom-4 w-px bg-zinc-700/60" aria-hidden="true" />
-          <div className="space-y-0">
-            {timeline.allStepsSorted.map(step => {
-              const isCompleted = step.scheduledAt < now
-              const isCurrent = false
-              return (
-                <TimelineRow
-                  key={step.id}
-                  step={step}
-                  meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
-                  isCompleted={isCompleted}
-                  isCurrent={isCurrent}
-                />
-              )
-            })}
-          </div>
-        </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe-bottom">
+        {view === 'gantt' ? (
+          <GanttChart timeline={timeline} event={event} now={now} />
+        ) : (
+          <>
+            {/* Meat legend */}
+            {event.meats.length > 1 && (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {event.meats.map(m => (
+                  <Badge key={m.id} color="orange">{meatLabels[m.id]}</Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Steps list */}
+            <div className="relative">
+              <div className="absolute left-[27px] top-4 bottom-4 w-px bg-zinc-700/60" aria-hidden="true" />
+              <div className="space-y-0">
+                {timeline.allStepsSorted.map(step => {
+                  const isCompleted = step.scheduledAt < now
+                  return (
+                    <TimelineRow
+                      key={step.id}
+                      step={step}
+                      meatLabel={step.meatEntryId ? meatLabels[step.meatEntryId] : undefined}
+                      isCompleted={isCompleted}
+                      isCurrent={false}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
