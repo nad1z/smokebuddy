@@ -60,8 +60,7 @@ function generateMeatTimeline(
 
   // ── Build steps ───────────────────────────────────────────────────────────
 
-  // serve / rest / off smoker (no separate slice step)
-  steps.push(makeStep(meat.id, 'serve', serveAt, 0, `${meat.id}_serve`))
+  // rest / off smoker (serve is a single event-level step, not per-meat)
   steps.push(makeStep(meat.id, 'rest', restStart, restMinutes, `${meat.id}_rest`))
   steps.push(makeStep(meat.id, 'removeFromSmoker', offSmokerAt, 0, `${meat.id}_removeFromSmoker`))
 
@@ -125,6 +124,9 @@ function generateEventSteps(
 
   const startFireAt = subtractMinutes(earliestAddToSmoker.scheduledAt, preheatMinutes)
   steps.push(makeStep(null, 'startFire', startFireAt, preheatMinutes, 'event_startFire'))
+
+  // Single serve step for the whole event
+  steps.push(makeStep(null, 'serve', servingTime, 0, 'event_serve'))
 
   // Water pan refill for smokers that use one
   if (SMOKERS_WITH_WATER_PAN.includes(event.smokerType)) {

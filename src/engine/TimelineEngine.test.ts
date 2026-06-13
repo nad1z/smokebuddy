@@ -44,7 +44,7 @@ describe('TimelineEngine', () => {
     const servingTime = '2025-01-01T18:00:00'
     const event = makeBrisketEvent(servingTime)
     const timeline = generateEventTimeline(event, true)
-    const serve = timeline.meatTimelines[0].steps.find(s => s.label === 'serve')
+    const serve = timeline.eventSteps.find(s => s.label === 'serve')
     expect(serve).toBeDefined()
     expect(serve!.scheduledAt.toISOString()).toBe(new Date(servingTime).toISOString())
   })
@@ -52,9 +52,8 @@ describe('TimelineEngine', () => {
   it('rest step ends before serve step', () => {
     const event = makeBrisketEvent('2025-01-01T18:00:00')
     const timeline = generateEventTimeline(event, true)
-    const steps = timeline.meatTimelines[0].steps
-    const rest = steps.find(s => s.label === 'rest')!
-    const serve = steps.find(s => s.label === 'serve')!
+    const rest = timeline.meatTimelines[0].steps.find(s => s.label === 'rest')!
+    const serve = timeline.eventSteps.find(s => s.label === 'serve')!
     expect(rest.scheduledAt.getTime()).toBeLessThan(serve.scheduledAt.getTime())
   })
 
@@ -102,31 +101,18 @@ describe('TimelineEngine', () => {
     expect(waterSteps.length).toBeGreaterThan(0)
   })
 
-  it('multi-meat: both meats serve at the same time', () => {
+  it('multi-meat: single serve step at event serving time', () => {
     const servingTime = '2025-01-01T18:00:00'
     const event: BBQEvent = {
       ...makeBrisketEvent(servingTime),
       meats: [
-        {
-          id: generateId(),
-          meatType: 'brisket',
-          weightLbs: 12,
-          targetTempF: 203,
-          label: 'Brisket',
-        },
-        {
-          id: generateId(),
-          meatType: 'chicken',
-          weightLbs: 4,
-          targetTempF: 165,
-          label: 'Chicken',
-        },
+        { id: generateId(), meatType: 'brisket', weightLbs: 12, targetTempF: 203, label: 'Brisket' },
+        { id: generateId(), meatType: 'chicken', weightLbs: 4, targetTempF: 165, label: 'Chicken' },
       ],
     }
     const timeline = generateEventTimeline(event, false)
-    const serveSteps = timeline.meatTimelines.map(
-      t => t.steps.find(s => s.label === 'serve')!.scheduledAt.getTime(),
-    )
-    serveSteps.forEach(t => expect(t).toBe(new Date(servingTime).getTime()))
+    const serveSteps = timeline.eventSteps.filter(s => s.label === 'serve')
+    expect(serveSteps.length).toBe(1)
+    expect(serveSteps[0].scheduledAt.getTime()).toBe(new Date(servingTime).getTime())
   })
 })

@@ -49,7 +49,6 @@ export function GanttChart({ timeline, event }: Props) {
         smokeStart: get('addToSmoker'),
         wrapAt: get('wrap'),
         offSmokerAt: get('removeFromSmoker'),
-        serveAt: get('serve'),
       }
     }),
   [timeline, event])
@@ -113,7 +112,7 @@ export function GanttChart({ timeline, event }: Props) {
           const smokeStartPct = bar.smokeStart ? pct(bar.smokeStart) : 0
           const wrapPct = bar.wrapAt ? pct(bar.wrapAt) : null
           const offPct = bar.offSmokerAt ? pct(bar.offSmokerAt) : 100
-          const servePct = bar.serveAt ? pct(bar.serveAt) : 100
+          const servePct = 100 // rest always runs to serving time (chart's right edge)
           const smokeEndPct = wrapPct ?? offPct
 
           return (
