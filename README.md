@@ -1,2 +1,2 @@
 # smokebuddy
-Your smokehouse meat smoking event planner / helper 
+Your meat smoking event planner / helper 
